@@ -37,7 +37,7 @@ char* substring(const char* str, size_t begin, size_t len);
 
 double dist_atom2(struct Atom *atom1, struct Atom *atom2);
  
-
+int score(struct Atom *seq, const int numAtoms );
 /*
  * Declare an array to hold data read from the ATOM records of a PDB file.
  */
@@ -214,7 +214,7 @@ int main(argc, argv)
     double dd;
     dd= dist_atom2(&atom[3], &atom[3]);
     printf("%f\n", dd);
-      for (i=1; i<=numAtoms; ++i) {
+      /*for (i=1; i<=numAtoms; ++i) {
         for (j=1; j<=numAtoms; ++j){
             d= dist_atom2(&atom[i], &atom[j]);
             if (d <= threshold){
@@ -222,6 +222,9 @@ int main(argc, argv)
             }
         }
         }
+        */
+        int sc;
+        sc =score(&atom[0],  numAtoms );
         return 0;
 }
 
@@ -242,11 +245,11 @@ double dist_atom2(struct Atom *atom1, struct Atom *atom2)
   return d;
 } 
 
-int score(const struct Atom *seq, const int numAtoms ){
+int score(struct Atom *seq, const int numAtoms ){
     int contact = 0;
-    for(i=0; i<= numAtoms, i++){
-        for(j=0; j<= numAtoms, j++){
-            if(&seq[i]->class != &seq[j]->class){
+    for(int i=0; i<= numAtoms; i++){
+        for(int j=0; j<= numAtoms; j++){
+            if(&seq[i].class != &seq[j].class){
                 if (dist_atom2(&seq[i],  &seq[j] )){
                     contact++;
                 }
@@ -256,17 +259,17 @@ int score(const struct Atom *seq, const int numAtoms ){
     return contact;
 }
 
-
+/*
 int opt_change(struct Atom *seq, const int numAtoms, const int eval_class, const int move_class){
 
     int aug = numAtoms;
     int pos = -1;
     int i;
-    for(i=0; i<= numAtoms, i++){
-        if (&seq[i]->class == eval_class)
+    for(i=0; i<= numAtoms; i++){
+        if (&seq[i].class == eval_class)
         {
-            &seq[i]->class  = move_class;
-            ns =    
+            &seq[i].class  = move_class;  
         }
     }
 }
+*/
