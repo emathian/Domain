@@ -38,6 +38,8 @@ char* substring(const char* str, size_t begin, size_t len);
 double dist_atom2(struct Atom *atom1, struct Atom *atom2);
  
 int score(struct Atom *seq, const int numAtoms );
+
+int opt_change(struct Atom *seq, const int numAtoms, const int eval_class, const int move_class, const int current_score);
 /*
  * Declare an array to hold data read from the ATOM records of a PDB file.
  */
@@ -259,17 +261,26 @@ int score(struct Atom *seq, const int numAtoms ){
     return contact;
 }
 
-/*
-int opt_change(struct Atom *seq, const int numAtoms, const int eval_class, const int move_class){
 
-    int aug = numAtoms;
+int opt_change(struct Atom *seq, const int numAtoms, const int eval_class, const int move_class, const int current_score){
+
+    int aug = numAtoms; 
+    int new_score, caug;
     int pos = -1;
     int i;
     for(i=0; i<= numAtoms; i++){
-        if (&seq[i].class == eval_class)
+
+
+        if (seq[i].class == eval_class)
         {
-            &seq[i].class  = move_class;  
+            seq[i].class  = move_class; 
+           new_score = score(&atom[0],  numAtoms );
+           caug = new_score - current_score;
+           if(caug < aug){
+            pos = i;
+            }
+            seq[i].class = eval_class;
         }
     }
+    return pos;
 }
-*/
