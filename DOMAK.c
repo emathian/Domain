@@ -38,10 +38,9 @@ char* substring(const char* str, size_t begin, size_t len);
 
 double dist_atom2(struct Atom *atom1, struct Atom *atom2);
  
-float score_split(struct Atom *seq, int x1, int y1, int x2, int y2, int len, double sc);
+float score_split_method1(struct Atom *seq, int x1, int y1, int len, double sc);
 
-
-void  DOMAK_2Seg(struct Atom *seq, int *x1_MAXF, int *y1_MAXF, int *x2_MAXF, int *y2_MAXF,  int len);
+void  DOMAK_method1(struct Atom *seq, int *x1_MAXF, int *y1_MAXF,  int len);
 
 /*
  * Declare an array to hold data read from the ATOM records of a PDB file.
@@ -232,7 +231,7 @@ int main(argc, argv)
         double sc1 = 10;
         double new_sc;
         int x1 = 0; int y1 = 50; int x2 =51; int y2 = 120;
-        new_sc  = score_split(&atom[0], x1, y1, x2, y2, numAtoms, sc1);        
+        new_sc  = score_split_method1(&atom[0], x1, y1, numAtoms, sc1);        
         printf("NEW SC %f\n",new_sc );
 
          int maxy2 = numAtoms; int maxx2 = numAtoms - MSSE + 1;  int maxy1 = numAtoms - MSSE; int maxx1 = numAtoms - MSSE - MSSM +1;
@@ -240,7 +239,7 @@ int main(argc, argv)
         printf("X1minF %d , y1minF %d , x2minF  %d , y2_MinF %d\n",minx1 , miny1, minx2 , miny2 );
 
         printf("X1maxF %d , y1maxF %d , x2maxF  %d , y2_MAXF %d\n", maxx1, maxy1, maxx2 , maxy2 );
-        DOMAK_2Seg(&atom[0], &minx1, &miny1, &minx2, &miny2, numAtoms);
+       // DOMAK_2Seg(&atom[0], &minx1, &miny1, &minx2, &miny2, numAtoms);
 
         return 0;
 }
@@ -262,12 +261,95 @@ double dist_atom2(struct Atom *atom1, struct Atom *atom2)
   return d;
 } 
 
-float score_split(struct Atom *seq, int x1, int y1, int x2, int y2, int len, double sc){
+float score_split_method1(struct Atom *seq, int x1, int y1,  int len, double sc){
+    int i, j;
+    int intA = 0; int intB = 0; int extAB = 0;
+    double D, corA1A2, score; 
+
+    /* Interaction A*/
+    for(i=x1; i<=y1; i++){
+        for(j=x1; j<=y1; j++){
+            if(i != j){
+                D= dist_atom2(&seq[i], &seq[j]);
+                if (D < 5){
+                    intA++;
+                }
+            }
+        }
+    }
+  
+    /* Interaction B1*/
+    for(i=0; i<x1; i++){
+        for(j=0; j<x1; j++){
+            if(i != j){
+                D= dist_atom2(&seq[i], &seq[j]);
+                if (D < 5){
+                    intB++;
+                }   
+            }
+        }
+    }
+
+
+    /* Interaction B2*/
+    for(i=y1+1; i< len; i++){
+            for(j=y1+1; j< len; j++){
+                if(i != j){
+                     D= dist_atom2(&seq[i], &seq[j]);
+                    if (D < 5){
+                         intB++;
+                    }   
+                }
+            }
+        }
+
+
+        /* Interaction B1A*/
+        for(i=0; i<x1; i++){
+            for(j=x1; j<=y1; j++){
+                if(i != j){
+                     D= dist_atom2(&seq[i], &seq[j]);
+                    if (D < 5){
+                        extAB++;
+                    }   
+                }
+            }
+        }
+        /* Interaction B2A*/
+        for(i=y1+1; i<len; i++){
+            for(j=x1; j<=y1; j++){
+                if(i != j){
+                     D= dist_atom2(&seq[i], &seq[j]);
+                    if (D < 5){
+                        extAB++;
+                    }   
+                }
+            }
+
+        }
+
+
+    if (extAB == 0){
+        extAB = -1;
+    }
+    
+    score = (intA/extAB) * (intB/extAB);
+    if (score > sc){
+        
+        return score;
+    }
+    else{
+        return sc;
+    }
+}
+
+
+/*float score_split(struct Atom *seq, int x1, int y1, int x2, int y2, int len, double sc){
     int i, j;
     int intA = 0; int intB = 0; int extAB = 0; int intA1 = 0; int intA2 = 0; int extA1A2 = 0;
     double D, corA1A2, score; 
 
-    /* Interaction A1*/
+     //Interaction A1
     for(i=x1; i<=y1; i++){
         for(j=x1; j<=y1; j++){
             if(i != j){
@@ -279,7 +361,7 @@ float score_split(struct Atom *seq, int x1, int y1, int x2, int y2, int len, dou
         }
     }
 
-     /* Interaction A2*/
+     // Interaction A2
     for(i=x2; i<=y2; i++){
         for(j=x2; j<=y2; j++){
             if(i != j){
@@ -291,7 +373,7 @@ float score_split(struct Atom *seq, int x1, int y1, int x2, int y2, int len, dou
         }
     }
 
-     /* Interaction A1_A2*/
+     //  Interaction A1_A2
     for(i=x1; i<=y1; i++){
         for(j=x2; j<=y2; j++){
             if(i != j){
@@ -310,7 +392,7 @@ float score_split(struct Atom *seq, int x1, int y1, int x2, int y2, int len, dou
     //if (corA1A2 < MSV){ // A1 and A2 are correlated
 
         if(x1 !=0){
-            /* Interaction B1*/
+            // Interaction B1
             for(i=0; i<=x1; i++){
                 for(j=0; j<=x1; j++){
                     if(i != j){
@@ -322,7 +404,7 @@ float score_split(struct Atom *seq, int x1, int y1, int x2, int y2, int len, dou
                 }
             }
 
-            /* Interaction B1A1*/
+            // Interaction B1A1
             for(i=0; i<=x1; i++){
                 for(j=x1; j<=y1; j++){
                     if(i != j){
@@ -335,7 +417,7 @@ float score_split(struct Atom *seq, int x1, int y1, int x2, int y2, int len, dou
             }
 
 
-            /* Interaction B1A2*/
+            // Interaction B1A2
             for(i=0; i<=x1; i++){
                 for(j=x2; j<=y2; j++){
                     if(i != j){
@@ -349,7 +431,7 @@ float score_split(struct Atom *seq, int x1, int y1, int x2, int y2, int len, dou
         }
 
         if(x2-y1 !=1){
-            /* Interaction B2*/
+            // Interaction B2
             for(i=y1; i<=x2; i++){
                 for(j=y1; j<=x2; j++){
                     if(i != j){
@@ -363,7 +445,7 @@ float score_split(struct Atom *seq, int x1, int y1, int x2, int y2, int len, dou
 
 
 
-            /* Interaction B2A1*/
+            // Interaction B2A1
             for(i=y1; i<=x2; i++){
                 for(j=x1; j<=y1; j++){
                     if(i != j){
@@ -375,7 +457,7 @@ float score_split(struct Atom *seq, int x1, int y1, int x2, int y2, int len, dou
                 }
             }
 
-            /* Interaction B2A2*/
+            // Interaction B2A2 //
             for(i=y1; i<=x2; i++){
                 for(j=x2; j<=y2; j++){
                     if(i != j){
@@ -389,7 +471,7 @@ float score_split(struct Atom *seq, int x1, int y1, int x2, int y2, int len, dou
         }
 
         if(y2 != len){
-            /* Interaction B3*/
+            // Interaction B3
             for(i=y2; i<=len; i++){
                 for(j=y2; j<=len; j++){
                     if(i != j){
@@ -401,7 +483,7 @@ float score_split(struct Atom *seq, int x1, int y1, int x2, int y2, int len, dou
                 }
             }
 
-            /* Interaction B3A1*/
+            // Interaction B3A1
             for(i=y2; i<=len; i++){
                 for(j=x1; j<=y1; j++){
                     if(i != j){
@@ -413,7 +495,7 @@ float score_split(struct Atom *seq, int x1, int y1, int x2, int y2, int len, dou
                 }
             }
 
-            /* Interaction B2A2*/
+            // Interaction B2A2
             for(i=y2; i<=len; i++){
                 for(j=x2; j<=y2; j++){
                     if(i != j){
@@ -445,8 +527,80 @@ float score_split(struct Atom *seq, int x1, int y1, int x2, int y2, int len, dou
     //    return sc;
     //}
 }
+*/
 
 
+
+void  DOMAK_method1(struct Atom *seq, int *x1_MAXF, int *y1_MAXF,  int len){
+    float c_score;
+    float new_score;
+    int x1max = len - MSSE +1;
+    int y1min = MSSE -1;
+    int Bool_seqA = 0;
+    int Bool_seqB1 = 0;
+    int Bool_seqB2 = 0;
+    int maxX1;
+    int maxY1;
+    for (int x1 = 0; x1 < x1max ; ++x1)
+    {
+        for (int y1 = y1min; y1 < len; ++y1)  
+        {
+
+            // Size of seg A
+            if(x1==0 ||  x1 == x1max){
+                if(y1-x1 + 1 > MSSE){
+                    Bool_seqA = 1;
+                }
+            }
+            else{
+                if (y1 -x1 + 1 > MSSM){
+                   Bool_seqA = 1; 
+                }
+            }
+
+            if(x1==0){
+                if(y1-len > MSSE ){
+                    Bool_seqB1 =1;
+                    Bool_seqB2 = 1; // Doesn't exsit
+                }
+            }
+            else if(x1==x1max){
+                if(y1 > MSSE ){
+                    Bool_seqB1 =1;
+                }
+            }
+            else{
+                if(x1 > MSSE && y1 -len > MSSE){
+                    Bool_seqB2 =1;
+                }
+            }
+
+            if (Bool_seqA == 1  && Bool_seqB1 == 1 && Bool_seqB2 ==1){
+                new_score = score_split_method1(&seq[0], x1, y1, len, c_score);
+                if(new_score > c_score){
+                    c_score  = new_score;
+                    maxX1  = x1;
+                    maxY1  = y1;
+                }
+
+            }
+
+
+        }
+
+    }
+
+    int score_max = score_split_method1(&seq[0], maxX1, maxY1, len,  c_score);
+    if (score_max > MSV){
+        *x1_MAXF = maxX1;
+        *y1_MAXF = maxY1;
+    }
+}
+
+
+
+
+/*
 void  DOMAK_2Seg(struct Atom *seq, int *x1_MAXF, int *y1_MAXF, int *x2_MAXF, int *y2_MAXF,  int len){
     int maxy2 = len; int maxx2 = len - MSSE + 1;  int maxy1 = len - MSSE; int maxx1 = len - MSSE - MSSM +1;
     int minx1 = 0; int miny1 = MSSE -1 ; int minx2 = MSSE; int miny2 = MSSE + MSSM -1;
@@ -535,7 +689,7 @@ void  DOMAK_2Seg(struct Atom *seq, int *x1_MAXF, int *y1_MAXF, int *x2_MAXF, int
 
 
                         if(t/tmax ==1){
-                            c_score = score_split(&atom[0], x1, y1, x2, y2, len, last_score);
+                            c_score = score_split(&seq[0], x1, y1, x2, y2, len, last_score);
                              //printf("c_score (%f) >= last_score(%f) \n", c_score, last_score); 
                             if (c_score > last_score){
                                 x1_MAX = x1;
@@ -563,4 +717,4 @@ void  DOMAK_2Seg(struct Atom *seq, int *x1_MAXF, int *y1_MAXF, int *x2_MAXF, int
     }
 
 }
-
+*/
