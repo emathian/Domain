@@ -36,17 +36,27 @@ typedef struct Atom{
 char* substring(const char* str, size_t begin, size_t len);
 
 double dist_atom2(struct Atom *atom1, struct Atom *atom2);
- 
+ /* Calculated the euclidian distance between two atoms*/
+
 int score(struct Atom *seq, const int numAtoms );
+/* Calculate the number of contact between the class u and v*/
 
-int opt_change(struct Atom *seq, const int numAtoms, const int eval_class, const int move_class, const int current_score);
 
- void STRUDL(struct Atom *seq, const int numAtoms);
+int opt_change(struct Atom *seq, const int numAtoms, const int eval_class, const int move_class);
+/* Find the best atom to change of class in order to minimize the augmentation of the score.
+    seq : sequence*/
 
+
+//void STRUDL(struct Atom *seq, const int numAtoms); // HEURISTIC FOR ALL K UNSECCESS
+
+void STRUDL_knowK(struct Atom *seq, const int numAtoms, const int k_size);
+/* This function calculates the best partion of atoms between the class u and v*/
 
 int find_min_score(const int score_array[], const int k);
+/*Find the min of a vector of integers */
 
 int find_min_scored(const double score_array[], const int k);
+/*Find the min of a vector of doubles */
 /*
  * Declare an array to hold data read from the ATOM records of a PDB file.
  */
@@ -209,8 +219,7 @@ int main(argc, argv)
         }
 
     numAtoms = read_data(argv[1]);
-    printf("%d\n", numAtoms );
-    /*for (i=1; i<=numAtoms; ++i) {
+     /*for (i=1; i<=numAtoms; ++i) {
         write_pdb_atom(
             atom[i].serial,
             atom[i].atomName,
@@ -222,9 +231,6 @@ int main(argc, argv)
             atom[i].centre);
     }
     */
-    double dd;
-    dd= dist_atom2(&atom[3], &atom[3]);
-    printf("%f\n", dd);
       /*for (i=1; i<=numAtoms; ++i) {
         for (j=1; j<=numAtoms; ++j){
             d= dist_atom2(&atom[i], &atom[j]);
@@ -238,10 +244,11 @@ int main(argc, argv)
         for(int i=0; i <= numAtoms; i++){
         atom[i].class = 1; // v
     }
-        printf("% d\n", numAtoms);
+ 
         //sc =score(&atom[0],  numAtoms );
-       STRUDL(&atom[0], numAtoms);
-        
+       //STRUDL(&atom[0], numAtoms);
+        int k_size = 81;
+        STRUDL_knowK(&atom[0], numAtoms,  k_size);
         printf("U class \n");
         for (int i = 0; i < numAtoms; ++i)
         {
@@ -283,8 +290,8 @@ double dist_atom2(struct Atom *atom1, struct Atom *atom2)
 int score(struct Atom *seq, const int numAtoms ){
     int c= 0;
    // printf("IN SCORE\n");
-    for(int i=0; i< numAtoms -2; i++){
-        for(int j=0; j<  numAtoms -2; j++){
+    for(int i=0; i< numAtoms; i++){
+        for(int j=0; j<  numAtoms ; j++){
            // printf(" i %d ,  j %d , class i % d , class j %d\n", i,j,seq[i].class  ,  seq[j].class);
             if(seq[i].class != seq[j].class){
               //printf("dist_atom2(&seq[i],  &seq[j] ) %f\n",dist_atom2(&seq[i],  &seq[j] ) );
@@ -300,7 +307,13 @@ int score(struct Atom *seq, const int numAtoms ){
 }
 
 
-int opt_change(struct Atom *seq, const int numAtoms, const int eval_class, const int move_class, const int current_score){
+int opt_change(struct Atom *seq, const int numAtoms, const int eval_class, const int move_class){
+    /* Find the best atom to change of class in order to minimize the augmentation of the score.
+    seq : sequence 
+    numatoms: nb elements in seq
+    eval_class: Initial class u=0, v=1
+    move_class: Host class*/
+
 
     int aug = numAtoms*100000000; 
     int pos = -1;
@@ -336,27 +349,29 @@ int opt_change(struct Atom *seq, const int numAtoms, const int eval_class, const
 
 
 void STRUDL_knowK(struct Atom *seq, const int numAtoms, const int k_size){
-    struct Atom cp_atom[MAX_ATOMS+1];
+    struct Atom cp_atom[MAX_ATOMS+1]; // Copy of seq
     int current_score;
-    int N2 = numAtoms /2;
-    int old_part[numAtoms];
-    int min_score;
+    int old_part[numAtoms]; // Initial partition
+    int min_score; // minimal number of contact
+
+    // Copy of seq 
     for (int i=0; i < numAtoms; i++){
             cp_atom[i] = seq[i];
         }
-
+    // Kepp in memory the initial partition
     for (int i=0; i < numAtoms; i++){
         
          old_part[i] = cp_atom[i].class;
     }
     
-    int Best_part[N2][numAtoms];
-    int Best_score[N2];
+    // Initialisation 
+    int Best_part[3][numAtoms]; // Best partion of each repetion 
+    int Best_score[3]; // Best score
     int kturn =0;
-    for (int k=1; k<6; k++){   
-        printf("k %d\n", k);   
+    for (int k=1; k<4; k++){  // For repetition of the stochastic process 
+         
         // Step 1:
- 
+        // Create a partion u of size k_size
         int start_pos = rand() % (numAtoms-1); // random start
         cp_atom[start_pos].class = 0; // u
         int nb_in_u = 1;
@@ -366,173 +381,171 @@ void STRUDL_knowK(struct Atom *seq, const int numAtoms, const int k_size){
             cp_atom[new_pos_u].class  = 0;
             nb_in_u ++;
         }
-        current_score = score(&cp_atom[0],  numAtoms );
-        printf("Init score %d \n", current_score );
+
+        current_score = score(&cp_atom[0],  numAtoms); // Intial score for the partition
 
         // Step 2: 
+        // Exchange elements to optimize the score
         int c = 0;
-        int score_array[numAtoms - k];
+        int score_array[numAtoms - k_size];
         int stop = 0;
         int n_flag =0;
         int stop2 = 0;
-        while (stop == 0){
-        int cu2 =0;
-
-
-        int UV_mat[numAtoms - k][numAtoms];
-        for (int i = 0; i < k; ++i)
-        {
-          for (int j = 0; j < numAtoms; ++j){
-            UV_mat[i][j]  = 1;
-            if(cp_atom[j].class == 0){
-                UV_mat[i][j]  = 0;
-            }
-          }
-        }
-
-     
-         while(stop2 ==0){  
-            //printf("C %d\n ", c);
-            //printf("k %d  \n", k);
-            int pos_v_to_u =  opt_change(&cp_atom[0], numAtoms, 1, 0, current_score );
-            int pos_u_to_v =  opt_change(&cp_atom[0], numAtoms, 0, 1, current_score );
-            //printf("pos_u_to_v %d,  pos_v_to_u %d \n", pos_u_to_v, pos_v_to_u );
-            for (int i = 0; i < numAtoms; ++i){
-                UV_mat[c][i] = cp_atom[i].class ;
-            }
-
-
-
-            //printf("pos_u_to_v %d pos_v_to_u = %d \n", pos_u_to_v, pos_v_to_u );
-            if(pos_v_to_u != -1){
-                UV_mat[c][pos_v_to_u] =0;
-                cp_atom[pos_v_to_u].class  = 0;
-            }
-            if(pos_u_to_v != -1 ){
-                UV_mat[c][pos_u_to_v] =1;
-                cp_atom[pos_u_to_v].class  = 1;
-                cp_atom[pos_u_to_v].flag  = 1;
-            }
-            /*
-            for (int i=0; i < numAtoms; i++){
-                    if(cp_atom[i].flag ==1){
-                        printf("i %d\n", i);
+        while (stop == 0){ // While the score is improved
+            int UV_mat[numAtoms - k_size][numAtoms]; // Matrix of partitions at each exchange
+            for (int i = 0; i < k_size; ++i){
+                for (int j = 0; j < numAtoms; ++j){
+                    UV_mat[i][j]  = 1;
+                    if(cp_atom[j].class == 0){
+                        UV_mat[i][j]  = 0;
                     }
+                }
             }
-            */
-            score_array[c] = score(&cp_atom[0],  numAtoms );
+
+            while(stop2 ==0){   // Until there is unflaged element in v
         
-            int count_V = 0;
-            n_flag = 0;
-            for (int i = 0; i < numAtoms; ++i)
+                int pos_v_to_u =  opt_change(&cp_atom[0], numAtoms, 1, 0, current_score ); // Change  v to u 
+                int pos_u_to_v =  opt_change(&cp_atom[0], numAtoms, 0, 1, current_score ); // Change  u to u 
+
+                // Reccord the partition
+                /*for (int i = 0; i < numAtoms; ++i){
+                    UV_mat[c][i] = cp_atom[i].class ;
+                }*/
+                // Reccord the exchange
+                if(pos_v_to_u != -1){
+                    UV_mat[c][pos_v_to_u] =0;
+                    cp_atom[pos_v_to_u].class  = 0;
+                }
+                if(pos_u_to_v != -1 ){
+                    UV_mat[c][pos_u_to_v] =1;
+                    cp_atom[pos_u_to_v].class  = 1;
+                    cp_atom[pos_u_to_v].flag  = 1;
+                }
+                // Score of the new partition
+                score_array[c] = score(&cp_atom[0],  numAtoms);
+
+                // Check if there is unflaged element in v
+                int count_V = 0;
+                n_flag = 0;
+                for (int i = 0; i < numAtoms; ++i)
+                 {
+                    if(cp_atom[i].class ==1 && cp_atom[i].flag ==1){
+                        n_flag++;
+                    }
+                    if(cp_atom[i].class ==1 ){
+                        count_V++;
+                    }
+                 }
+                 if(count_V==n_flag){
+                    stop2 =1;
+                 }
+             
+                c++;
+
+            } // End while stop2 = 1
+            
+            // Initialize the flag
+            for (int i=0; i < numAtoms; i++){
+                cp_atom[i].flag = 0;
+            }
+     
+            /*
+             for (int i = 0; i < numAtoms - k_size; ++i)
              {
-                if(cp_atom[i].class ==1 && cp_atom[i].flag ==1){
-                    n_flag++;
-                }
-                if(cp_atom[i].class ==1 ){
-                    count_V++;
-                }
+                  cp_atom[j].class = Best_part[i][j];
              }
-             if(count_V==n_flag){
-                stop2 =1;
-             }
-         c++;
+             */
+          
+            // Step 3
+            // Find the minimal partion 
+            int min_s = find_min_score(score_array,numAtoms - k_size );
+            //printf("min_s %d\n",min_s );
+            //printf("score_array[min_s] %d \n",score_array[min_s] );
 
-          }
-        
-      
-        for (int i=0; i < numAtoms; i++){
-            cp_atom[i].flag = 0;
-        }
-        printf("END STEP 2\n \n \n");
 
-        printf("CLASS IN WHILE WHILe\n");
-        int cv =0;
-        int cu = 0;
-         for (int j = 0; j < numAtoms; ++j){
-            if(cp_atom[j].class == 1){
-                 cv++;
+            // Step 4
+            // Stop condition: any improvment ?
+            min_score  =score_array[min_s];
+
+            if (min_score < current_score){
+                for (int ii=0; ii < numAtoms; ii++){
+                    cp_atom[ii].class = UV_mat[min_s][ii];
+                    Best_part[k-1][ii] = UV_mat[min_s][ii];
+                    Best_score[k-1] = min_score;
+                }
+            
+                current_score =  min_score;
+                stop = 0;
             }
             else{
-                cu++;
-            }  
-            
-         }
-         printf("cu %d \n", cu);
-         printf("cv %d \n", cv );
+                stop =1;
+             }
+        } // Stop while stop =1
 
-        int min_s = find_min_score(score_array,numAtoms - k );
-  
-        printf("\n");
-        // Step 4
-        printf("score_array[min_s] %d \n",score_array[min_s] );
-        min_score  =score_array[min_s];
-
-        if (min_score < current_score){
-            for (int ii=0; ii < numAtoms; ii++){
-                cp_atom[ii].class = UV_mat[min_s][ii];
-            }
-        
-            current_score =  min_score;
-            stop = 0;
-        }
-        else{
-            stop =1;
-         }
-        }
-       // printf("HERE\n");
-        for (int i=0; i < numAtoms; i++){
-            Best_part[kturn][i]= cp_atom[i].class;
-            Best_score[kturn] = current_score;
-        }
-        //printf("CURRENT SCORE %d \n", current_score);
-
-
-
+        // Initial partition
         for (int i=0; i < numAtoms; i++){
             cp_atom[i].class = old_part[i];
         }
+        // Inital score
         current_score = score(&cp_atom[0],  numAtoms );
-        /*printf("Best_part\n" );
-        for (int i = 0; i < numAtoms; ++i)
-        {
-            printf("%d",Best_part[kturn][i] );
-        }*/
-
         kturn++;
     } 
-    double best_best_score[N2];
-    printf("\n\n\n\n");
-    printf("Best_part \n");
-    for (int i = 0; i < N2-5; ++i)
-    {
-        for (int j = 0; j < numAtoms; ++j)
-        {
-            printf(" % d ", Best_part[i][j]);
-        }
-        printf("\n");
-          printf("\n");
-    }
-    for (int i = 0; i < N2-5; ++i)
+
+    // the Best of the Best partition
+    double best_best_score[3];
+ 
+    for (int i = 0; i < 4; ++i)
     {
         for (int j=0; j < numAtoms; j++){
-           cp_atom[j].class = Best_part[i][j];
+            cp_atom[j].class = Best_part[i][j];
         }
-        best_best_score[i] =  score(&cp_atom[0],  numAtoms ) / i;
+    
+        best_best_score[i] =  score(&cp_atom[0],  numAtoms ) ;
     }
-    int min_min_s = find_min_scored(best_best_score, N2-5);
+    int min_min_s = find_min_scored(best_best_score, 3);
     for (int j=0; j < numAtoms; j++){
             cp_atom[j].class =  Best_part[min_min_s ][j];
     }
 
-      for (int j=0; j < numAtoms; j++){
-            seq[j].class = cp_atom[j].class;
-            printf("j %d , class , %d \n", j, cp_atom[j].class);
+    // return
+    for (int j=0; j < numAtoms; j++){
+        seq[j].class = cp_atom[j].class;
     }
     
 }
 
 
+int find_min_score(const int score_array[], const int k){
+    int min = 10000;
+    int min_pos = -1;
+    for (int i = 0; i < k; ++i)
+    {
+        if ( score_array[i] < min)
+        {
+            min = score_array[i];
+            min_pos = i;
+        }
+    }
+    return min_pos;
+}
+
+
+int find_min_scored(const double score_array[], const int k){
+    int min = 10000;
+    int min_pos = -1;
+    for (int i = 0; i < k; ++i)
+    {
+        if ( score_array[i] < min)
+        {
+            min = score_array[i];
+            min_pos = i;
+        }
+    }
+    return min_pos;
+
+   } 
+
+/*
 void STRUDL(struct Atom *seq, const int numAtoms){
     struct Atom cp_atom[MAX_ATOMS+1];
     int current_score;
@@ -687,7 +700,9 @@ void STRUDL(struct Atom *seq, const int numAtoms){
             printf("HERE\n");
            cp_atom[j].class = Best_part[i][j];
         }
-        best_best_score[i] =  score(&cp_atom[0],  numAtoms ) / i;
+        int cc_score =  score(&cp_atom[0],  numAtoms ) ;
+        best_best_score[i] = cc_score/i;
+
         printf("HEREEEE\n");
     }
     int min_min_s = find_min_scored(best_best_score, N2);
@@ -703,33 +718,4 @@ void STRUDL(struct Atom *seq, const int numAtoms){
     
 }
 
-
-int find_min_score(const int score_array[], const int k){
-    int min = 10000;
-    int min_pos = -1;
-    for (int i = 0; i < k; ++i)
-    {
-        if ( score_array[i] < min)
-        {
-            min = score_array[i];
-            min_pos = i;
-        }
-    }
-    return min_pos;
-}
-
-
-int find_min_scored(const double score_array[], const int k){
-    int min = 10000;
-    int min_pos = -1;
-    for (int i = 0; i < k; ++i)
-    {
-        if ( score_array[i] < min)
-        {
-            min = score_array[i];
-            min_pos = i;
-        }
-    }
-    return min_pos;
-
-   } 
+*/
