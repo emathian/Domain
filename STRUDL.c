@@ -565,7 +565,7 @@ void STRUDL(struct Atom *seq, const int numAtoms){
             nb_in_u ++;
         }
         current_score = score(&cp_atom[0],  numAtoms );
-        printf("Init score %d \n", current_score );
+
 
         // Step 2: 
         int c = 0;
@@ -590,8 +590,7 @@ void STRUDL(struct Atom *seq, const int numAtoms){
 
      
          while(stop2 ==0){  
-            //printf("C %d\n ", c);
-            //printf("k %d  \n", k);
+       
             int pos_v_to_u =  opt_change(&cp_atom[0], numAtoms, 1, 0, current_score );
             int pos_u_to_v =  opt_change(&cp_atom[0], numAtoms, 0, 1, current_score );
             //printf("pos_u_to_v %d,  pos_v_to_u %d \n", pos_u_to_v, pos_v_to_u );
@@ -599,9 +598,6 @@ void STRUDL(struct Atom *seq, const int numAtoms){
                 UV_mat[c][i] = cp_atom[i].class ;
             }
 
-
-
-            //printf("pos_u_to_v %d pos_v_to_u = %d \n", pos_u_to_v, pos_v_to_u );
             if(pos_v_to_u != -1){
                 UV_mat[c][pos_v_to_u] =0;
                 cp_atom[pos_v_to_u].class  = 0;
@@ -611,13 +607,7 @@ void STRUDL(struct Atom *seq, const int numAtoms){
                 cp_atom[pos_u_to_v].class  = 1;
                 cp_atom[pos_u_to_v].flag  = 1;
             }
-            /*
-            for (int i=0; i < numAtoms; i++){
-                    if(cp_atom[i].flag ==1){
-                        printf("i %d\n", i);
-                    }
-            }
-            */
+
             score_array[c] = score(&cp_atom[0],  numAtoms );
         
             int count_V = 0;
@@ -642,9 +632,7 @@ void STRUDL(struct Atom *seq, const int numAtoms){
         for (int i=0; i < numAtoms; i++){
             cp_atom[i].flag = 0;
         }
-        printf("END STEP 2\n \n \n");
 
-        printf("CLASS IN WHILE WHILe\n");
         int cv =0;
         int cu = 0;
          for (int j = 0; j < numAtoms; ++j){
@@ -656,8 +644,6 @@ void STRUDL(struct Atom *seq, const int numAtoms){
             }  
             
          }
-         printf("cu %d \n", cu);
-         printf("cv %d \n", cv );
 
         int min_s = find_min_score(score_array,numAtoms - k );
   
@@ -678,46 +664,34 @@ void STRUDL(struct Atom *seq, const int numAtoms){
             stop =1;
          }
         }
-       // printf("HERE\n");
+
         for (int i=0; i < numAtoms; i++){
             Best_part[kturn][i]= cp_atom[i].class;
             Best_score[kturn] = current_score;
         }
-        //printf("CURRENT SCORE %d \n", current_score);
-
-
 
         for (int i=0; i < numAtoms; i++){
             cp_atom[i].class = old_part[i];
         }
         current_score = score(&cp_atom[0],  numAtoms );
-        /*printf("Best_part\n" );
-        for (int i = 0; i < numAtoms; ++i)
-        {
-            printf("%d",Best_part[kturn][i] );
-        }*/
-        printf("kturn %d \n", kturn );
+
         kturn++;
     } 
-    double best_best_score[N2];
-    printf("\n\n\n\n");
-    printf("Best_part \n");
-    for (int i = 0; i < N2; ++i)
+    double best_best_score[N2-5];
+    
+
+    for (int i = 0; i < N2-5; ++i)
     {
-        for (int j = 0; j < numAtoms; ++j)
-        {
-            printf(" % d ", Best_part[i][j]);
-        }
-        printf("\n");
-    }
-    for (int i = 0; i < N2; ++i)
-    {
+        printf("i  %d \n", i );
         for (int j=0; j < numAtoms; j++){
+            printf("HERE\n");
            cp_atom[j].class = Best_part[i][j];
         }
         best_best_score[i] =  score(&cp_atom[0],  numAtoms ) / i;
+        printf("HEREEEE\n");
     }
     int min_min_s = find_min_scored(best_best_score, N2);
+    printf("min_min_s %d \n", min_min_s);
     for (int j=0; j < numAtoms; j++){
             cp_atom[j].class =  Best_part[min_min_s ][j];
     }
